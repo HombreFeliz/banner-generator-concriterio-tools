@@ -440,16 +440,28 @@ import Base from '../layouts/Base.astro';
 <script>
   import { icons as lucideIcons } from 'lucide';
 
-  // ===== ALL LUCIDE ICON NAMES (loaded dynamically) =====
-  const ALL_ICON_NAMES: string[] = Object.keys(lucideIcons).sort();
+  // ===== ICON NAME MAPPING =====
+  // lucide exports PascalCase keys (e.g. "ArrowRight"). We build a kebab-case
+  // lookup so users can search with familiar names like "arrow-right".
+  function toKebab(str: string): string {
+    return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+  }
 
-  // ===== SVG CACHE =====
-  // Pre-build SVG strings from lucide data to avoid DOM manipulation
-  function buildSvgString(name: string, size: number, color: string, strokeWidth: number = 1.5): string | null {
-    const iconData = lucideIcons[name];
-    if (!iconData) return null;
+  // Map: kebab-name -> PascalCase key
+  const ICON_MAP: Record<string, string> = {};
+  for (const key of Object.keys(lucideIcons)) {
+    ICON_MAP[toKebab(key)] = key;
+  }
+  const ALL_ICON_NAMES: string[] = Object.keys(ICON_MAP).sort();
 
-    const [defaultAttrs, children] = iconData;
+  // ===== SVG BUILDER =====
+  // Icons in lucide are arrays of [tag, attrs] tuples
+  function buildSvgString(kebabName: string, size: number, color: string, strokeWidth: number = 1.5): string | null {
+    const pascalKey = ICON_MAP[kebabName];
+    if (!pascalKey) return null;
+    const children = lucideIcons[pascalKey];
+    if (!children || !Array.isArray(children)) return null;
+
     const childrenSvg = children.map(([tag, attrs]: [string, Record<string, string>]) => {
       const attrStr = Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ');
       return `<${tag} ${attrStr} />`;
@@ -458,8 +470,8 @@ import Base from '../layouts/Base.astro';
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round">${childrenSvg}</svg>`;
   }
 
-  function buildSvgElement(name: string, size: number = 24): SVGElement | null {
-    const svgString = buildSvgString(name, size, 'currentColor');
+  function buildSvgElement(kebabName: string, size: number = 24): SVGElement | null {
+    const svgString = buildSvgString(kebabName, size, 'currentColor');
     if (!svgString) return null;
     const template = document.createElement('template');
     template.innerHTML = svgString.trim();
