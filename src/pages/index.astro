@@ -1,0 +1,752 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Banner Generator — Con Criterio" description="Genera banners para publicaciones de newsletter. Elige color, iconos Lucide, ajusta tamaño y descarga en PNG.">
+
+  <div class="tool-header">
+    <h1 class="tool-title">Banner Generator</h1>
+    <p class="tool-desc">Elige color, iconos y descarga el banner para tu publicación.</p>
+  </div>
+
+  <div class="workspace">
+    <div class="preview-area">
+      <span class="preview-label">Preview</span>
+      <div class="banner-frame">
+        <canvas id="bannerCanvas" width="1200" height="630"></canvas>
+      </div>
+      <div class="download-row">
+        <button class="btn-download btn-primary-dl" id="btnDownload">Descargar PNG</button>
+        <button class="btn-download btn-secondary-dl" id="btnDownload2x">Descargar 2x</button>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <h3>Color de fondo</h3>
+        <div class="color-options" id="colorOptions"></div>
+        <div class="color-dropdown-wrap">
+          <select class="color-dropdown" id="colorDropdown"></select>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>Formato <span class="hint">Substack recomienda 16:9</span></h3>
+        <div class="ratio-options" id="ratioOptions">
+          <button class="ratio-btn active" data-ratio="1200,630">16:9</button>
+          <button class="ratio-btn" data-ratio="1200,675">16:10</button>
+          <button class="ratio-btn" data-ratio="1200,1200">1:1</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>Buscar iconos <span class="hint" id="iconCount"></span></h3>
+        <div class="icon-search-wrap">
+          <input type="text" class="icon-search" id="iconSearch" placeholder="heart, zap, code, rocket...">
+        </div>
+        <div class="icon-grid" id="iconGrid"></div>
+      </div>
+
+      <div class="control-group">
+        <h3>Tamaño de iconos</h3>
+        <div class="slider-row">
+          <input type="range" min="40" max="160" value="80" id="iconSize">
+          <span class="slider-value" id="iconSizeLabel">80px</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>Separación</h3>
+        <div class="slider-row">
+          <input type="range" min="8" max="80" value="32" id="iconGap">
+          <span class="slider-value" id="iconGapLabel">32px</span>
+        </div>
+      </div>
+
+      <div class="control-group selected-icons-group">
+        <h3>Iconos seleccionados <span class="hint">Click para quitar</span></h3>
+        <div class="selected-icons" id="selectedIcons">
+          <span class="empty-hint">Busca y selecciona iconos arriba</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</Base>
+
+<style>
+  .tool-header {
+    padding: 60px 48px 40px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .tool-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 900;
+    font-size: clamp(32px, 5vw, 48px);
+    letter-spacing: -1.5px;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+
+  .tool-desc {
+    font-size: 16px;
+    color: var(--mid-gray);
+    font-weight: 300;
+  }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 40px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 48px 96px;
+  }
+
+  .preview-area {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .preview-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--mid-gray);
+  }
+
+  .banner-frame {
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  #bannerCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .download-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn-download {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 12px 24px;
+    border-radius: 100px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-download:hover { transform: translateY(-1px); }
+
+  .btn-primary-dl {
+    background: var(--violet);
+    color: white;
+  }
+
+  .btn-primary-dl:hover { box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35); }
+
+  .btn-secondary-dl {
+    background: var(--warm-gray);
+    color: var(--charcoal);
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .control-group h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .control-group h3 .hint {
+    font-weight: 400;
+    color: var(--mid-gray);
+    font-size: 12px;
+  }
+
+  .color-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .color-dropdown-wrap { display: none; }
+
+  .color-dropdown {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--warm-gray);
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    background: white;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+  }
+
+  .color-dropdown:focus { border-color: var(--violet); }
+
+  .color-swatch {
+    border-radius: 10px;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 0;
+  }
+
+  .color-swatch:hover { transform: scale(1.05); }
+
+  .color-swatch.active {
+    border-color: var(--charcoal);
+    box-shadow: 0 0 0 2px var(--off-white), 0 0 0 4px var(--charcoal);
+  }
+
+  .color-swatch span {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .color-swatch:hover span,
+  .color-swatch.active span { opacity: 1; }
+
+  .icon-search-wrap { position: relative; }
+
+  .icon-search {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--warm-gray);
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    background: white;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .icon-search:focus { border-color: var(--violet); }
+
+  .icon-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-top: 12px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .icon-grid::-webkit-scrollbar { width: 4px; }
+  .icon-grid::-webkit-scrollbar-track { background: transparent; }
+  .icon-grid::-webkit-scrollbar-thumb { background: var(--warm-gray); border-radius: 2px; }
+
+  .icon-btn {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 1px solid var(--warm-gray);
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    padding: 8px;
+  }
+
+  .icon-btn:hover {
+    border-color: var(--violet);
+    background: rgba(139, 92, 246, 0.05);
+  }
+
+  .icon-btn svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--charcoal);
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+  .selected-icons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-height: 40px;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px dashed var(--warm-gray);
+    background: white;
+  }
+
+  .selected-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--off-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .selected-icon:hover { background: #fee2e2; }
+
+  .selected-icon svg {
+    width: 22px;
+    height: 22px;
+    stroke: var(--charcoal);
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+  .selected-icon::after {
+    content: '\00d7';
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    background: var(--coral);
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    line-height: 16px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .selected-icon:hover::after { opacity: 1; }
+
+  .empty-hint {
+    color: var(--mid-gray);
+    font-size: 13px;
+    padding: 4px;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .slider-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--violet);
+  }
+
+  .slider-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--mid-gray);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  .ratio-options {
+    display: flex;
+    gap: 8px;
+  }
+
+  .ratio-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--warm-gray);
+    background: white;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    transition: all 0.15s;
+  }
+
+  .ratio-btn:hover { border-color: var(--violet); }
+
+  .ratio-btn.active {
+    background: var(--charcoal);
+    color: white;
+    border-color: var(--charcoal);
+  }
+
+  /* Tablet */
+  @media (max-width: 860px) {
+    .workspace {
+      grid-template-columns: 1fr;
+    }
+    .controls { order: -1; }
+    .tool-header { padding: 48px 24px 32px; }
+    .workspace { padding: 0 24px 64px; }
+  }
+
+  /* Mobile */
+  @media (max-width: 600px) {
+    .tool-header { padding: 48px 16px 24px; }
+    .workspace { padding: 0 16px 64px; gap: 24px; }
+
+    .color-options { display: none; }
+    .color-dropdown-wrap { display: block; }
+
+    .icon-grid { display: none; grid-template-columns: repeat(4, 1fr); }
+    .icon-grid.has-search { display: grid; }
+    .icon-btn { min-width: 44px; min-height: 44px; }
+
+    .selected-icon { width: 48px; height: 48px; }
+    .selected-icon::after { opacity: 1; }
+
+    .ratio-options { flex-wrap: wrap; }
+    .ratio-btn { flex: 1; min-width: 70px; text-align: center; padding: 12px 16px; }
+
+    .download-row { flex-direction: column; }
+    .btn-download { width: 100%; min-height: 48px; text-align: center; }
+
+    .slider-row input[type="range"] { height: 24px; }
+  }
+
+  /* Small phone */
+  @media (max-width: 380px) {
+    .icon-grid.has-search { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+
+<script>
+  import { icons as lucideIcons } from 'lucide';
+
+  // ===== ALL LUCIDE ICON NAMES (loaded dynamically) =====
+  const ALL_ICON_NAMES: string[] = Object.keys(lucideIcons).sort();
+
+  // ===== SVG CACHE =====
+  // Pre-build SVG strings from lucide data to avoid DOM manipulation
+  function buildSvgString(name: string, size: number, color: string, strokeWidth: number = 1.5): string | null {
+    const iconData = lucideIcons[name];
+    if (!iconData) return null;
+
+    const [defaultAttrs, children] = iconData;
+    const childrenSvg = children.map(([tag, attrs]: [string, Record<string, string>]) => {
+      const attrStr = Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ');
+      return `<${tag} ${attrStr} />`;
+    }).join('');
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round">${childrenSvg}</svg>`;
+  }
+
+  function buildSvgElement(name: string, size: number = 24): SVGElement | null {
+    const svgString = buildSvgString(name, size, 'currentColor');
+    if (!svgString) return null;
+    const template = document.createElement('template');
+    template.innerHTML = svgString.trim();
+    return template.content.firstChild as SVGElement;
+  }
+
+  // ===== STATE =====
+  const COLORS = [
+    { name: 'Coral', hex: '#FF6B4A', textColor: '#ffffff' },
+    { name: 'Blue', hex: '#3B5BFF', textColor: '#ffffff' },
+    { name: 'Lime', hex: '#B8F03E', textColor: '#1A1815' },
+    { name: 'Violet', hex: '#7665ff', textColor: '#ffffff' },
+    { name: 'Sun', hex: '#FFBE0B', textColor: '#1A1815' },
+    { name: 'Mint', hex: '#06D6A0', textColor: '#1A1815' },
+    { name: 'White', hex: '#FFFFFF', textColor: '#1A1815' },
+    { name: 'Ink', hex: '#1A1815', textColor: '#ffffff' },
+    { name: 'Cream', hex: '#F1F0E4', textColor: '#1A1815' },
+  ];
+
+  const state = {
+    bgColor: COLORS[3],
+    selectedIcons: [] as string[],
+    iconSize: 80,
+    iconGap: 32,
+    canvasWidth: 1200,
+    canvasHeight: 630,
+  };
+
+  // ===== DOM REFS =====
+  const canvas = document.getElementById('bannerCanvas') as HTMLCanvasElement;
+  const colorOptionsEl = document.getElementById('colorOptions')!;
+  const colorDropdownEl = document.getElementById('colorDropdown') as HTMLSelectElement;
+  const iconSearchEl = document.getElementById('iconSearch') as HTMLInputElement;
+  const iconGridEl = document.getElementById('iconGrid')!;
+  const selectedIconsEl = document.getElementById('selectedIcons')!;
+  const iconSizeEl = document.getElementById('iconSize') as HTMLInputElement;
+  const iconSizeLabel = document.getElementById('iconSizeLabel')!;
+  const iconGapEl = document.getElementById('iconGap') as HTMLInputElement;
+  const iconGapLabel = document.getElementById('iconGapLabel')!;
+  const iconCountEl = document.getElementById('iconCount')!;
+
+  // ===== INIT =====
+  iconCountEl.textContent = `${ALL_ICON_NAMES.length} iconos disponibles`;
+  renderColorOptions();
+  renderColorDropdown();
+  renderIconGrid();
+  renderBanner();
+
+  // ===== EVENT LISTENERS =====
+  document.getElementById('btnDownload')!.addEventListener('click', () => downloadBanner(1));
+  document.getElementById('btnDownload2x')!.addEventListener('click', () => downloadBanner(2));
+
+  colorDropdownEl.addEventListener('change', () => {
+    selectColor(colorDropdownEl.selectedIndex);
+  });
+
+  document.getElementById('ratioOptions')!.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('.ratio-btn') as HTMLElement | null;
+    if (!btn) return;
+    document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const [w, h] = btn.dataset.ratio!.split(',').map(Number);
+    state.canvasWidth = w;
+    state.canvasHeight = h;
+    canvas.width = w;
+    canvas.height = h;
+    renderBanner();
+  });
+
+  iconSearchEl.addEventListener('input', () => {
+    const val = iconSearchEl.value;
+    if (val.trim()) {
+      iconGridEl.classList.add('has-search');
+    } else {
+      iconGridEl.classList.remove('has-search');
+    }
+    renderIconGrid(val);
+  });
+
+  iconSizeEl.addEventListener('input', () => {
+    state.iconSize = parseInt(iconSizeEl.value);
+    iconSizeLabel.textContent = state.iconSize + 'px';
+    renderBanner();
+  });
+
+  iconGapEl.addEventListener('input', () => {
+    state.iconGap = parseInt(iconGapEl.value);
+    iconGapLabel.textContent = state.iconGap + 'px';
+    renderBanner();
+  });
+
+  // ===== COLOR =====
+  function renderColorOptions() {
+    colorOptionsEl.innerHTML = COLORS.map((c, i) => `
+      <div class="color-swatch ${state.bgColor.hex === c.hex ? 'active' : ''}"
+           style="background: ${c.hex}; color: ${c.textColor};"
+           data-index="${i}">
+        <span>${c.name}</span>
+      </div>
+    `).join('');
+
+    colorOptionsEl.querySelectorAll('.color-swatch').forEach(el => {
+      el.addEventListener('click', () => {
+        selectColor(parseInt((el as HTMLElement).dataset.index!));
+      });
+    });
+  }
+
+  function renderColorDropdown() {
+    colorDropdownEl.innerHTML = COLORS.map((c, i) => `
+      <option value="${i}" ${state.bgColor.hex === c.hex ? 'selected' : ''}>${c.name}</option>
+    `).join('');
+  }
+
+  function selectColor(index: number) {
+    state.bgColor = COLORS[index];
+    renderColorOptions();
+    colorDropdownEl.selectedIndex = index;
+    renderBanner();
+  }
+
+  // ===== ICON GRID =====
+  function renderIconGrid(filter = '') {
+    const filtered = filter
+      ? ALL_ICON_NAMES.filter(n => n.includes(filter.toLowerCase().replace(/\s+/g, '-')))
+      : ALL_ICON_NAMES.slice(0, 50);
+
+    iconGridEl.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+
+    filtered.slice(0, 100).forEach(name => {
+      const btn = document.createElement('button');
+      btn.className = 'icon-btn';
+      btn.title = name;
+      const svg = buildSvgElement(name, 20);
+      if (svg) {
+        svg.style.width = '20px';
+        svg.style.height = '20px';
+        svg.setAttribute('stroke', '#2D2A26');
+        svg.setAttribute('stroke-width', '1.5');
+        btn.appendChild(svg);
+      }
+      btn.addEventListener('click', () => addIcon(name));
+      fragment.appendChild(btn);
+    });
+
+    iconGridEl.appendChild(fragment);
+  }
+
+  // ===== SELECTED ICONS =====
+  function addIcon(name: string) {
+    if (state.selectedIcons.length >= 5) return;
+    state.selectedIcons.push(name);
+    renderSelectedIcons();
+    renderBanner();
+  }
+
+  function removeIcon(index: number) {
+    state.selectedIcons.splice(index, 1);
+    renderSelectedIcons();
+    renderBanner();
+  }
+
+  function renderSelectedIcons() {
+    if (state.selectedIcons.length === 0) {
+      selectedIconsEl.innerHTML = '<span class="empty-hint">Busca y selecciona iconos arriba</span>';
+      return;
+    }
+
+    selectedIconsEl.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+
+    state.selectedIcons.forEach((name, i) => {
+      const div = document.createElement('div');
+      div.className = 'selected-icon';
+      div.title = `Quitar ${name}`;
+      const svg = buildSvgElement(name, 22);
+      if (svg) {
+        svg.style.width = '22px';
+        svg.style.height = '22px';
+        svg.setAttribute('stroke', '#2D2A26');
+        svg.setAttribute('stroke-width', '1.5');
+        div.appendChild(svg);
+      }
+      div.addEventListener('click', () => removeIcon(i));
+      fragment.appendChild(div);
+    });
+
+    selectedIconsEl.appendChild(fragment);
+  }
+
+  // ===== BANNER RENDERING =====
+  function addGrain(ctx: CanvasRenderingContext2D, w: number, h: number, opacity: number) {
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const noise = (Math.random() - 0.5) * 40;
+      data[i] = Math.min(255, Math.max(0, data[i] + noise * opacity));
+      data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise * opacity));
+      data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise * opacity));
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  function drawIconToCanvas(ctx: CanvasRenderingContext2D, name: string, x: number, y: number, size: number, color: string): Promise<void> {
+    return new Promise((resolve) => {
+      const svgString = buildSvgString(name, size, color);
+      if (!svgString) { resolve(); return; }
+
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, x, y, size, size);
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      img.src = url;
+    });
+  }
+
+  async function renderBannerAsync(targetCanvas: HTMLCanvasElement, scale: number = 1) {
+    const w = state.canvasWidth * scale;
+    const h = state.canvasHeight * scale;
+    targetCanvas.width = w;
+    targetCanvas.height = h;
+
+    const ctx = targetCanvas.getContext('2d')!;
+    ctx.fillStyle = state.bgColor.hex;
+    ctx.fillRect(0, 0, w, h);
+    addGrain(ctx, w, h, 0.03);
+
+    if (state.selectedIcons.length > 0) {
+      const icons = state.selectedIcons;
+      const size = state.iconSize * scale;
+      const gap = state.iconGap * scale;
+      const totalWidth = icons.length * size + (icons.length - 1) * gap;
+      const startX = (w - totalWidth) / 2;
+      const startY = (h - size) / 2;
+      const color = state.bgColor.textColor;
+
+      for (let i = 0; i < icons.length; i++) {
+        const x = startX + i * (size + gap);
+        await drawIconToCanvas(ctx, icons[i], x, startY, size, color);
+      }
+    }
+  }
+
+  function renderBanner() {
+    // Quick sync render for background + grain
+    const ctx = canvas.getContext('2d')!;
+    const w = state.canvasWidth;
+    const h = state.canvasHeight;
+    canvas.width = w;
+    canvas.height = h;
+    ctx.fillStyle = state.bgColor.hex;
+    ctx.fillRect(0, 0, w, h);
+    addGrain(ctx, w, h, 0.03);
+
+    // Async render for icons
+    if (state.selectedIcons.length > 0) {
+      const icons = state.selectedIcons;
+      const size = state.iconSize;
+      const gap = state.iconGap;
+      const totalWidth = icons.length * size + (icons.length - 1) * gap;
+      const startX = (w - totalWidth) / 2;
+      const startY = (h - size) / 2;
+      const color = state.bgColor.textColor;
+
+      icons.forEach((name, i) => {
+        const x = startX + i * (size + gap);
+        drawIconToCanvas(ctx, name, x, startY, size, color);
+      });
+    }
+  }
+
+  async function downloadBanner(scale: number) {
+    const exportCanvas = document.createElement('canvas');
+    await renderBannerAsync(exportCanvas, scale);
+    const link = document.createElement('a');
+    link.download = scale === 1 ? 'banner.png' : 'banner-2x.png';
+    link.href = exportCanvas.toDataURL('image/png');
+    link.click();
+  }
+</script>
